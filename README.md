@@ -37,9 +37,10 @@ Ensure all required fields are properly filled before starting the bot.
 ### 2. Accepting Quests Manually (Mobile Only)
 To use the bot, you must manually accept the quests on Discord using your mobile device. Since mobile browsers may not support this properly, use the **Via Browser** to accept the quests:
 
-1. Open **Discord on your mobile**.
-2. Navigate to the quest section.
-3. Use **Via Browser** to accept the quest manually.
+1. Download **Via Browser**.
+2. Log in with your Discord account.
+3. Enable **Request Desktop Site** in browser settings.
+4. Open the **Discord website** and navigate to the quest section.
 
 ### 3. Using the Bot
 Once you've accepted a quest, follow these steps to start:
@@ -62,3 +63,4 @@ For any issues or further assistance, feel free to reach out to the support team
 
 ## Support & Demo Server
 You can test the bot and get support in our official server: [Join Here](https://discord.gg/4WStuuHj39)
+
