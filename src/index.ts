@@ -1,87 +1,126 @@
-
-import config from "./config5.js";
-import { error } from "./utils/logging.js";
-import { Client, Collection, Options, Partials } from "discord.js";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-export let root = __dirname;
-console.log(root);
-
-export class CustomClient extends Client {
-    cooldowns: any[] = [];
-    newQuests: Collection<String, any> = new Collection();
-    commands: Collection<String, any> = new Collection();
-    slashCommands: Collection<String, any> = new Collection();
-    selectMenus: Collection<String, any> = new Collection();
-    modals: Collection<String, any> = new Collection();
-    contextMenus: Collection<String, any> = new Collection();
-    buttons: Collection<String, any> = new Collection();
-    questsConfig: Collection<String, QuestConfig> = new Collection();
-    questSolvoer: Collection<String, QuestSolver> = new Collection();
-    images: Collection<String, questImagesInterface> = new Collection();
+import { config } from "dotenv";
+import { ShardingManager } from "discord.js";
+import { join } from "path";
+import fs from "fs";
+import { LoggerService } from "./services/logging/Logger";
 
 
+try {
+  // ! load environment variables
+  config();
+  // ! create a new static instance of LoggerService
+  const logger = LoggerService.getInstance();
+  // * check if the bot is running in sharding mode
+  if (process.env?.ShARD_ENABLED && process.env.ShARD_ENABLED === "true") {
+    // * initialize bot file path
+    let botFile;
+
+    // * check if the bot is running in development mode or production mode
+    if (__dirname.includes("dist")) {
+      // * check if the bot file exists
+      if (fs.existsSync(join(__dirname, "bot.js")))
+        botFile = join(__dirname, "bot.js");
+      else throw new Error("Bot file not found in dist folder (bot.js)");
+    } else {
+      // * check if the bot is running using bun or node-js
+      if (typeof Bun !== "undefined") {
+        // * check if the bot file exists
+        if (fs.existsSync(join(__dirname, "bot.ts")))
+          botFile = join(__dirname, "bot.ts");
+        else throw new Error("Bot file not found in src folder (bot.ts)");
+      } else {
+        // * check if the bot file exists
+        if (fs.existsSync(join(__dirname, "bot.ts")))
+          botFile = join(__dirname, "bot.ts");
+        else if (fs.existsSync(join(__dirname, "bot.js")))
+          botFile = join(__dirname, "bot.js");
+        else
+          throw new Error(
+            "Bot file not found in src folder (bot.ts or bot.js)"
+          );
+      }
+    }
+
+    // * check if the environment variable DISCORD_TOKEN is set
+    if (!process.env.DISCORD_TOKEN) {
+      throw new Error("DISCORD_TOKEN environment variable not set");
+    }
+
+    // * initialize manager exec arguments
+    let mangerExecArgv = [
+      "--optimize_for_size",
+      "--gc_interval=100",
+      "--max_old_space_size=512",
+    ];
+
+    // * check if the bot file is a typescript file and not running using bun to add ts-node/register to exec arguments
+    if (
+      botFile.endsWith(".ts") &&
+      !__dirname.includes("dist") &&
+      typeof Bun === "undefined"
+    ) {
+      mangerExecArgv.push("--require", "ts-node/register");
+    }
+
+    // * create a new instance of ShardingManager    
+    const manager = new ShardingManager(botFile, {
+      respawn: true,
+      token: process.env.DISCORD_TOKEN,
+      execArgv: mangerExecArgv,
+      mode: "process",
+    });
+
+    // * log the shard spawn event once the shard is created
+    manager.on("shardCreate", (shard) => {
+      // * log the shard creation event
+      logger.info(`🟢・Shard ${shard.id + 1} created successfully`);
+      // * log the shard death event once the shard is destroyed
+      shard.on("death", () => {
+        logger.error(
+          `🚨・Closing shard ${shard.id + 1}/${
+            manager.totalShards
+          } unexpectedly`
+        );
+      });
+      // * log the shard ready event once the shard is ready
+      shard.on("ready", () => {
+        logger.info(
+          `🟢・Shard ${shard.id + 1}/${manager.totalShards} ready and connected`
+        );
+      });
+      // * log the shard disconnect event once the shard is disconnected
+      shard.on("disconnect", () => {
+        logger.warn(
+          `🚨・Shard ${shard.id + 1}/${manager.totalShards} disconnected`
+        );
+      });
+      // * log the shard reconnecting event once the shard is reconnecting
+      shard.on("reconnecting", () => {
+        logger.warn(
+          `🚨・Shard ${shard.id + 1}/${manager.totalShards} reconnecting`
+        );
+      });
+      // * log the shard spawn event once the shard is spawned
+      shard.on("spawn", () => {
+        logger.info(`🟢・Shard ${shard.id + 1}/${manager.totalShards} spawned`);
+      });
+      // * log the shard error event once the shard encounters an error
+      shard.on("error", (error) => {
+        logger.error(
+          `🚨・Shard ${shard.id + 1}/${
+            manager.totalShards
+          } encountered an error: `,
+          error
+        );
+      });
+    });
+
+    // * spawn the shards using the manager
+    manager.spawn();
+  } else {
+    // * run the bot in single process mode
+    require("./bot");
+  }
+} catch (error) {
+  console.error(error);
 }
-
-
-export const client = new CustomClient({
-    intents: 131071,
-    partials: [Partials.Message, Partials.GuildMember, Partials.Channel, Partials.Reaction, Partials.User],
-    failIfNotExists: false,
-    makeCache: Options.cacheWithLimits({
-        ...Options.DefaultMakeCacheSettings,
-        ReactionManager: 0,
-        ApplicationCommandManager: 0,
-        ApplicationEmojiManager: 500,
-        AutoModerationRuleManager: 0,
-        BaseGuildEmojiManager: 0,
-        DMMessageManager: 25,
-        EntitlementManager: 0,
-        GuildBanManager: 0,
-        GuildEmojiManager: 0,
-        GuildInviteManager: 0,
-        GuildMemberManager: 0,
-        GuildScheduledEventManager: 0,
-        GuildStickerManager: 0,
-        MessageManager: 100,
-        PresenceManager: 0,
-        ReactionUserManager: 0,
-        GuildForumThreadManager: 0,
-        GuildMessageManager: 100,
-        GuildTextThreadManager: 0,
-        StageInstanceManager: 0,
-        ThreadManager: 0,
-        ThreadMemberManager: 0,
-        UserManager: 0,
-        VoiceStateManager: 5,
-
-
-    }),
-});
-
-
-import eventHandler from "./handlers/eventHandler.js";
-import idkHowToCallThisHandler from "./handlers/idkHowToCallThisHandler.js";
-import mongoose from "mongoose";
-import { QuestConfig } from "./interface/questConfig.js";
-import { loadQuests } from "./utils/loadQuests.js";
-import { questImagesInterface } from "./models/images.js";
-import { QuestSolver } from "./class/questSolver.js";
-
-await idkHowToCallThisHandler.init();
-eventHandler.function();
-loadQuests(client);
-
-process.on("uncaughtException", config.debugMode ? console.error : error);
-process.on("unhandledRejection", config.debugMode ? console.error : error);
-
-mongoose.connect(config.mongoDB, {
-    useBigInt64: true,
-
-
-}).then(() => { console.log("Connected to MongoDB") }).catch((err) => { console.log(err) });
-
-client.login(config.token);
