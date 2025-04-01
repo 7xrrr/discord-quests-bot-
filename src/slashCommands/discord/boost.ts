@@ -71,7 +71,7 @@ export default {
     ],
     function: async function ({ interaction }: { interaction: ChatInputCommandInteraction }) {
         await interaction.deferReply();
-        const guild = config.whiteListedGuildes.includes(interaction.guildId) ? interaction.guild : client.guilds.cache.get(config.whiteListedGuildes[0]);
+        const guild = config.whiteListedGuilds.includes(interaction.guildId) ? interaction.guild : client.guilds.cache.get(config.whiteListedGuilds[0]);
         const user = guild && (interaction.options.getUser("member") || interaction.user) || null;
         const member: GuildMember = user && await guild.members.fetch(user.id).catch((err) => null);
         if (!member) return interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Member Not Found").setColor("DarkRed")] });
